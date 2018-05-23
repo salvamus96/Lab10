@@ -8,7 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import it.polito.tdp.porto.model.Author;
+import it.polito.tdp.porto.model.AuthorIdMap;
 import it.polito.tdp.porto.model.Paper;
+import it.polito.tdp.porto.model.PaperIdMap;
 
 public class PortoDAO {
 
@@ -68,7 +70,12 @@ public class PortoDAO {
 		}
 	}
 	
-	public List<Author> getListAutori() {
+	/**
+	 * Restituisce la lista degli autori contenuti dal database	
+	 * @param authorIdMap 
+	 * @return
+	 */
+	public List<Author> getListAutori(AuthorIdMap authorIdMap) {
 
 		final String sql = "SELECT * FROM author ORDER BY lastname, firstname";
 
@@ -82,7 +89,7 @@ public class PortoDAO {
 			while (rs.next()) {
 
 				Author autore = new Author(rs.getInt("id"), rs.getString("lastname"), rs.getString("firstname"));
-				autori.add(autore);
+				autori.add(authorIdMap.get(autore));
 			}
 			conn.close();
 			return autori;
@@ -93,6 +100,46 @@ public class PortoDAO {
 		}
 	}
 
+	/**
+	 * Restituisce 
+	 * @param paperIdMap
+	 * @return
+	 */
+	public List<Paper> getListArticoli(PaperIdMap paperIdMap) {
+		final String sql = "SELECT * FROM paper ";
+
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+
+			ResultSet rs = st.executeQuery();
+
+			List<Paper> list = new ArrayList<>();
+			while (rs.next()) {
+				Paper paper = new Paper(rs.getInt("eprintid"), rs.getString("title"), rs.getString("issn"),
+						rs.getString("publication"), rs.getString("type"), rs.getString("types"));
+			
+				list.add(paperIdMap.get(paper));
+			}
+			
+			conn.close();
+			return list;
+			
+		} catch (SQLException e) {
+			// e.printStackTrace();
+			throw new RuntimeException("Errore Db");
+		}
+	}
+	
+	
+
+	
+	/**
+	 * Dato un autore, restituisce i suoi coautori che hanno collaborato con lui nell'articolo
+	 * @param autore
+	 * @return
+	 */
+	
 	public List<Author> getListCoautori(Author autore) {
 
 		final String sql = "SELECT DISTINCT a2.id, a2.lastname, a2.firstname " + 
@@ -121,4 +168,65 @@ public class PortoDAO {
 			throw new RuntimeException("Errore Db");
 		}
 	}
+
+	/**
+	 * 
+	 * @param aPartenza
+	 * @param aDestinazione
+	 * @return
+	 */
+	public Paper articoloInComune(Author aPartenza, Author aDestinazione) {
+		final String sql = "SELECT p.eprintid, title, issn, publication, type, types " + 
+						   "FROM creator c1, creator c2, paper p " + 
+						   "WHERE c1.eprintid = c2.eprintid AND p.eprintid = c1.eprintid " + 
+						   "		AND c1.authorid = ? AND c2.authorid = ? " + 
+						   "LIMIT 1";
+
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, aPartenza.getId());
+			st.setInt(2, aDestinazione.getId());
+			ResultSet rs = st.executeQuery();
+		
+			Paper p = null;
+			if (rs.next()) {
+				p = new Paper(rs.getInt("p.eprintid"), rs.getString("title"), rs.getString("issn"),
+						rs.getString("publication"), rs.getString("type"), rs.getString("types")) ;
+			}
+			conn.close();
+			return p;
+		
+		} catch (SQLException e) {
+			// e.printStackTrace();
+			throw new RuntimeException("Errore Db");
+		}
+	}
+
+	public void getAllCreator(AuthorIdMap authorIdMap, PaperIdMap paperIdMap) {
+		final String sql = "SELECT * FROM creator";
+		
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet rs = st.executeQuery();
+			
+			while (rs.next()) {
+				Author a = authorIdMap.get(rs.getInt("authorid"));
+				Paper p = paperIdMap.get(rs.getInt("eprintid"));
+				
+				// popolazione delle liste relative a ogni oggetto creato
+				a.getArticoli().add(p);
+				p.getAutori().add(a);
+			}
+			
+			conn.close();
+			
+		} catch (SQLException e) {
+			// e.printStackTrace();
+			throw new RuntimeException("Errore Db");
+		}
+	
+	}
+
 }

@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
+import org.jgrapht.alg.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
@@ -12,15 +13,27 @@ import it.polito.tdp.porto.db.PortoDAO;
 
 public class Model {
 
-	private List <Author> autori;
 	private PortoDAO pdao;
+	
+	private List <Author> autori;
+	private AuthorIdMap authorIdMap;
+	
+	private List <Paper> articoli;
+	private PaperIdMap paperIdMap;
 	
 	private Graph <Author, DefaultEdge> graph;
 	
 	
 	public Model () {
 		this.pdao = new PortoDAO();
-		this.autori = pdao.getListAutori();
+		this.authorIdMap = new AuthorIdMap();
+		this.autori = pdao.getListAutori(this.authorIdMap);
+		
+		this.paperIdMap = new PaperIdMap();
+		this.articoli = this.pdao.getListArticoli(this.paperIdMap);
+		
+		// popolazione delle liste relative alla relazione MOLTI - MOLTI
+		this.pdao.getAllCreator(this.authorIdMap, this.paperIdMap);
 		
 		this.graph = new SimpleGraph<>(DefaultEdge.class);
 		
@@ -47,6 +60,54 @@ public class Model {
 	public List <Author> getCoautoriFromAutore (Author a){
 		return Graphs.neighborListOf(this.graph, a);
 	}
+
+	public List<Author> getNonCoautore(Author a) {
+		List <Author> au = new ArrayList<>(this.autori);
+		au.removeAll(this.getCoautoriFromAutore(a));
+		au.remove(a);
+		//List <Author> nonCoautore = new ArrayList<>(autori);
+		return au;
+	}
+
+	public List<Paper> sequenzaArticoli(Author a, Author a2) {
+		List <Paper> sequenza = new ArrayList<>();
+		// creazione del cammino minimo tra due autori
+		DijkstraShortestPath<Author, DefaultEdge> camminoMinimo = new DijkstraShortestPath<>(this.graph, a, a2);
+		
+		// elenco degli archi del cammino minimo
+		List <DefaultEdge> edges = camminoMinimo.getPathEdgeList();
+		
+		
+		for (DefaultEdge e : edges) {
+			// dati i vertici adiacenti (sorgente e destinazione dell'arco)
+			Author aPartenza = this.graph.getEdgeSource(e);
+			Author aDestinazione = this.graph.getEdgeTarget(e);
+			
+// consultare il DB per trovare almeno un articolo in cui hanno collaborato i vertici adiacenti
+			Paper p = pdao.articoloInComune(aPartenza, aDestinazione);
 	
+// attraverso ORM trovare l'intersezione tra i due insiemi di articoli di ogni vertice
+			//Paper p = this.intersezioneInsiemi (aPartenza, aDestinazione);
+			if (p != null)
+				sequenza.add(p);
+		}
+		
+		return sequenza;
+	}
+
+	private Paper intersezioneInsiemi(Author aPartenza, Author aDestinazione) {
+		List <Paper> list1 = aPartenza.getArticoli();
+		List <Paper> list2 = aDestinazione.getArticoli();
+		System.out.println(list1);
+		System.out.println(list2);
+		
+		for (Paper p1 : list1)
+			for (Paper p2 : list2) {
+				if (p1.equals(p2))
+					return p1;
+			}
+		System.out.println("null");
+		return null;
+	}
 
 }
