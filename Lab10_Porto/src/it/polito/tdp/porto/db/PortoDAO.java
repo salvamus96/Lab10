@@ -14,7 +14,7 @@ import it.polito.tdp.porto.model.PaperIdMap;
 
 public class PortoDAO {
 
-	/*
+	/**
 	 * Dato l'id ottengo l'autore.
 	 */
 	public Author getAutore(int id) {
@@ -42,7 +42,8 @@ public class PortoDAO {
 		}
 	}
 
-	/*
+	
+	/**
 	 * Dato l'id ottengo l'articolo.
 	 */
 	public Paper getArticolo(int eprintid) {
@@ -70,8 +71,9 @@ public class PortoDAO {
 		}
 	}
 	
+	
 	/**
-	 * Restituisce la lista degli autori contenuti dal database	
+	 * Restituisce la lista degli autori contenuti nel database (pattern ORM)	
 	 * @param authorIdMap 
 	 * @return
 	 */
@@ -100,8 +102,9 @@ public class PortoDAO {
 		}
 	}
 
+	
 	/**
-	 * Restituisce 
+	 * Restituisce la lista degli articoli contenuti nel database (pattern ORM)
 	 * @param paperIdMap
 	 * @return
 	 */
@@ -132,16 +135,14 @@ public class PortoDAO {
 	}
 	
 	
-
-	
 	/**
-	 * Dato un autore, restituisce i suoi coautori che hanno collaborato con lui nell'articolo
+	 * Dato un autore, restituisce i coautori che hanno collaborato con lui (pattern ORM)
 	 * @param autore
 	 * @return
 	 */
 	
-	public List<Author> getListCoautori(Author autore) {
-
+	public List<Author> getListCoautori(Author autore, AuthorIdMap authorIdMap) {
+// il DISTINCT è obbligatorio perchè due autori possono aver collaborato più volte insieme
 		final String sql = "SELECT DISTINCT a2.id, a2.lastname, a2.firstname " + 
 							"FROM creator c1, creator c2, author a2 " + 
 							"WHERE c1.eprintid = c2.eprintid AND c1.authorid = ? " + 
@@ -158,7 +159,7 @@ public class PortoDAO {
 			while (rs.next()) {
 
 				Author a = new Author(rs.getInt("a2.id"), rs.getString("a2.lastname"), rs.getString("a2.firstname"));
-				coautori.add(a);
+				coautori.add(authorIdMap.get(a));
 			}
 			conn.close();
 			return coautori;
@@ -169,8 +170,9 @@ public class PortoDAO {
 		}
 	}
 
+	
 	/**
-	 * 
+	 * Dati due autori restituisce un articolo in cui hanno collaborato entrambi
 	 * @param aPartenza
 	 * @param aDestinazione
 	 * @return
@@ -180,7 +182,7 @@ public class PortoDAO {
 						   "FROM creator c1, creator c2, paper p " + 
 						   "WHERE c1.eprintid = c2.eprintid AND p.eprintid = c1.eprintid " + 
 						   "		AND c1.authorid = ? AND c2.authorid = ? " + 
-						   "LIMIT 1";
+						   "LIMIT 1"; // è sufficiente almeno un articolo 
 
 		try {
 			Connection conn = DBConnect.getConnection();
@@ -203,6 +205,12 @@ public class PortoDAO {
 		}
 	}
 
+		
+	/**
+	 * Definisce le relazioni tra autori e articoli dal DB
+	 * @param authorIdMap
+	 * @param paperIdMap
+	 */
 	public void getAllCreator(AuthorIdMap authorIdMap, PaperIdMap paperIdMap) {
 		final String sql = "SELECT * FROM creator";
 		
@@ -212,6 +220,7 @@ public class PortoDAO {
 			ResultSet rs = st.executeQuery();
 			
 			while (rs.next()) {
+				// utilizzo dell'Identity Map per indice
 				Author a = authorIdMap.get(rs.getInt("authorid"));
 				Paper p = paperIdMap.get(rs.getInt("eprintid"));
 				

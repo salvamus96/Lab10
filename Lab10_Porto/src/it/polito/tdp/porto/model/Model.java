@@ -48,9 +48,10 @@ public class Model {
 	
 	public void createGraph () {
 		Graphs.addAllVertices(this.graph, this.getAutori());
-		
+
+// per ogni vertice, l'arco è rappresentato da un articolo in cui ha collaborato un altro autore (coautore)
 		for (Author a : this.graph.vertexSet()) {
-			List <Author> coautori = this.pdao.getListCoautori(a);
+			List <Author> coautori = this.pdao.getListCoautori(a, this.authorIdMap);
 			for(Author au : coautori)
 				this.graph.addEdge(a, au);
 		}
@@ -63,13 +64,14 @@ public class Model {
 
 	public List<Author> getNonCoautore(Author a) {
 		List <Author> au = new ArrayList<>(this.autori);
+// dalla lista di autori non si considerano i coautori e l'autore stesso
 		au.removeAll(this.getCoautoriFromAutore(a));
 		au.remove(a);
-		//List <Author> nonCoautore = new ArrayList<>(autori);
 		return au;
 	}
 
 	public List<Paper> sequenzaArticoli(Author a, Author a2) {
+
 		List <Paper> sequenza = new ArrayList<>();
 		// creazione del cammino minimo tra due autori
 		DijkstraShortestPath<Author, DefaultEdge> camminoMinimo = new DijkstraShortestPath<>(this.graph, a, a2);
@@ -77,36 +79,34 @@ public class Model {
 		// elenco degli archi del cammino minimo
 		List <DefaultEdge> edges = camminoMinimo.getPathEdgeList();
 		
-		
-		for (DefaultEdge e : edges) {
+		if (edges != null) {
+			for (DefaultEdge e : edges) {
 			// dati i vertici adiacenti (sorgente e destinazione dell'arco)
-			Author aPartenza = this.graph.getEdgeSource(e);
-			Author aDestinazione = this.graph.getEdgeTarget(e);
+				Author aPartenza = this.graph.getEdgeSource(e);
+				Author aDestinazione = this.graph.getEdgeTarget(e);
 			
 // consultare il DB per trovare almeno un articolo in cui hanno collaborato i vertici adiacenti
-			Paper p = pdao.articoloInComune(aPartenza, aDestinazione);
+				//Paper p = pdao.articoloInComune(aPartenza, aDestinazione);
 	
 // attraverso ORM trovare l'intersezione tra i due insiemi di articoli di ogni vertice
-			//Paper p = this.intersezioneInsiemi (aPartenza, aDestinazione);
-			if (p != null)
-				sequenza.add(p);
+				Paper p = this.intersezioneInsiemi (aPartenza, aDestinazione);
+				if (p != null)
+					sequenza.add(p);
+			}
 		}
-		
 		return sequenza;
 	}
 
 	private Paper intersezioneInsiemi(Author aPartenza, Author aDestinazione) {
 		List <Paper> list1 = aPartenza.getArticoli();
 		List <Paper> list2 = aDestinazione.getArticoli();
-		System.out.println(list1);
-		System.out.println(list2);
 		
+		// è sufficiente almeno un articolo
 		for (Paper p1 : list1)
 			for (Paper p2 : list2) {
 				if (p1.equals(p2))
 					return p1;
 			}
-		System.out.println("null");
 		return null;
 	}
 
