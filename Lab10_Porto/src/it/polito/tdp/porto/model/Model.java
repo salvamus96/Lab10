@@ -21,7 +21,7 @@ public class Model {
 	private List <Paper> articoli;
 	private PaperIdMap paperIdMap;
 	
-	private Graph <Author, DefaultEdge> graph;
+	private Graph <Author, PaperEdge> graph;
 	
 	
 	public Model () {
@@ -35,7 +35,7 @@ public class Model {
 		// popolazione delle liste relative alla relazione MOLTI - MOLTI
 		this.pdao.getAllCreator(this.authorIdMap, this.paperIdMap);
 		
-		this.graph = new SimpleGraph<>(DefaultEdge.class);
+		this.graph = new SimpleGraph<>(PaperEdge.class);
 		
 		this.createGraph();
 	}
@@ -74,22 +74,22 @@ public class Model {
 
 		List <Paper> sequenza = new ArrayList<>();
 		// creazione del cammino minimo tra due autori
-		DijkstraShortestPath<Author, DefaultEdge> camminoMinimo = new DijkstraShortestPath<>(this.graph, a, a2);
+		DijkstraShortestPath<Author, PaperEdge> camminoMinimo = new DijkstraShortestPath<>(this.graph, a, a2);
 		
 		// elenco degli archi del cammino minimo
-		List <DefaultEdge> edges = camminoMinimo.getPathEdgeList();
+		List <PaperEdge> edges = camminoMinimo.getPathEdgeList();
 		
 		if (edges != null) {
-			for (DefaultEdge e : edges) {
+			for (PaperEdge e : edges) {
 			// dati i vertici adiacenti (sorgente e destinazione dell'arco)
 				Author aPartenza = this.graph.getEdgeSource(e);
 				Author aDestinazione = this.graph.getEdgeTarget(e);
 			
 // consultare il DB per trovare almeno un articolo in cui hanno collaborato i vertici adiacenti
-				//Paper p = pdao.articoloInComune(aPartenza, aDestinazione);
+				Paper p = pdao.articoloInComune(aPartenza, aDestinazione);
 	
 // attraverso ORM trovare l'intersezione tra i due insiemi di articoli di ogni vertice
-				Paper p = this.intersezioneInsiemi (aPartenza, aDestinazione);
+				//Paper p = this.intersezioneInsiemi (aPartenza, aDestinazione);
 				if (p != null)
 					sequenza.add(p);
 			}
